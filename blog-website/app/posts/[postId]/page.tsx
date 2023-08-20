@@ -26,9 +26,9 @@ export default async function Post({ params }: Props) {
     return notFound();
   }
 
-  const { title, date, contentHtml } = await getPostData(postId);
+  const { title, datePublished, contentHtml } = await getPostData(postId);
 
-  const pubDate = getFormattedDate(date);
+  const pubDate = getFormattedDate(datePublished);
 
   return (
     <main className="px-6 prose prose-xl prose-slate dark:prose-invert mx-auto">

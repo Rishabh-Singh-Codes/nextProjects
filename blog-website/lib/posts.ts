@@ -20,13 +20,15 @@ export function getSortedPostsData() {
     const blogPost: BlogPost = {
       id,
       title: matterResults.data.title,
-      date: matterResults.data.datePublished,
+      datePublished: matterResults.data.datePublished,
     };
 
     return blogPost;
   });
 
-  return allPostsData.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return allPostsData.sort((a, b) => (
+    new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime()
+  ));
 }
 
 export async function getPostData(id: string) {
@@ -44,7 +46,7 @@ export async function getPostData(id: string) {
   const blogPostWithHTML: BlogPost & { contentHtml: string } = {
     id,
     title: matterResults.data.title,
-    date: matterResults.data.datePublished,
+    datePublished: matterResults.data.datePublished,
     contentHtml,
   };
 
