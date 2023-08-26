@@ -6,6 +6,7 @@ import { ChangeEvent, FormEvent, useState, useTransition } from "react";
 const initState: Partial<Todo> = {
   userId: 1,
   title: "",
+  completed: false,
 };
 
 export default function AddTodo() {
@@ -29,7 +30,7 @@ export default function AddTodo() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const { title, userId } = data;
+    const { title, userId, completed } = data;
 
     setIsFetching(true);
 
@@ -41,6 +42,7 @@ export default function AddTodo() {
       body: JSON.stringify({
         userId,
         title,
+        completed
       }),
     });
 
@@ -55,6 +57,7 @@ export default function AddTodo() {
 
     startTransition(() => {
       if (path === "/add") {
+        router.refresh();
         router.push("/");
       } else {
         router.refresh();

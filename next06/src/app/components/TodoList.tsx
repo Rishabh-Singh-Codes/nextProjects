@@ -1,4 +1,5 @@
 import fetchTodos from "@/lib/fetchTodos"
+import Todo from "./Todo";
 
 export default async function TodoList() {
     const todos = await fetchTodos();
@@ -8,7 +9,7 @@ export default async function TodoList() {
     const content = (
         <>
             {sortedTodos.map(todo => (
-                <h1 key={todo.id}>{todo.title}</h1>
+                <Todo key={todo.id} {...todo} />
             ))}
         </>
     )
