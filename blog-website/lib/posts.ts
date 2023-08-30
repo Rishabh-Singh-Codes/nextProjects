@@ -1,54 +1,100 @@
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
-import { remark } from "remark";
-import html from "remark-html";
+import { compileMDX } from "next-mdx-remote/rsc";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeHighlight from "rehype-highlight";
+import rehypeSlug from "rehype-slug";
+import Video from "@/app/components/Video";
+import CustomImage from "@/app/components/CustomImage";
 
-const postsDirectory = path.join(process.cwd(), "blogposts");
+type Filetree = {
+  tree: [
+    {
+      path: string;
+    }
+  ];
+};
 
-export function getSortedPostsData() {
-  const fileNames = fs.readdirSync(postsDirectory);
-
-  const allPostsData = fileNames.map((fileName) => {
-    const id = fileName.replace(/\.md$/, "");
-
-    const fullPath = path.join(postsDirectory, fileName);
-    const fileContents = fs.readFileSync(fullPath, "utf8");
-
-    const matterResults = matter(fileContents);
-
-    const blogPost: BlogPost = {
-      id,
-      title: matterResults.data.title,
-      datePublished: matterResults.data.datePublished,
-    };
-
-    return blogPost;
+export async function getPostByName(fileName: string): Promise<BlogPost | undefined> {
+  const res = await fetch(`https://raw.githubusercontent.com/Rishabh-Singh-Codes/blogs/main/${fileName}`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+      "X-Github-Api-Version": "2022-11-28",
+    },
   });
 
-  return allPostsData.sort((a, b) => (
-    new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime()
-  ));
-}
+  if(!res.ok) return undefined;
 
-export async function getPostData(id: string) {
-  const fullPath = path.join(postsDirectory, `${id}.md`);
-  const fileContents = fs.readFileSync(fullPath, "utf8");
+  const rawMDX = await res.text();
 
-  const matterResults = matter(fileContents);
+  if(rawMDX === "404: Not Found") return undefined;
 
-  const processedContent = await remark()
-    .use(html)
-    .process(matterResults.content);
+  const { frontmatter, content } = await compileMDX<{ title: string, date: string, tags: string[] }>({ 
+    source: rawMDX,
+    components: {
+      Video,
+      CustomImage
+    },
+    options: {
+      parseFrontmatter: true,
+      mdxOptions: {
+        rehypePlugins: [
+          rehypeHighlight,
+          rehypeSlug,
+          [
+            rehypeAutolinkHeadings, {
+              behavior: "wrap",
+            }
+          ]
+        ]
+      }
+    }
+  });
 
-  const contentHtml = processedContent.toString();
+  const id = fileName.replace(/^website\/|\.mdx$/g, "");
 
-  const blogPostWithHTML: BlogPost & { contentHtml: string } = {
-    id,
-    title: matterResults.data.title,
-    datePublished: matterResults.data.datePublished,
-    contentHtml,
+  const blogPostObj: BlogPost = {
+    meta: {
+      id,
+      title: frontmatter.title,
+      date: frontmatter.date,
+      tags: frontmatter.tags,
+    },
+    content,
   };
 
-  return blogPostWithHTML;
+  return blogPostObj;
+}
+
+export async function getPostsMeta(): Promise<Meta[] | undefined> {
+  const res = await fetch(
+    `https://api.github.com/repos/Rishabh-Singh-Codes/blogs/git/trees/main?recursive=1`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        "X-Github-Api-Version": "2022-11-28",
+      },
+    }
+  );
+
+  if (!res.ok) return undefined;
+
+  const repoFiletree: Filetree = await res.json();
+  const filesArray = repoFiletree.tree
+    .map((obj) => obj.path)
+    .filter((path) => path.endsWith(".mdx"));
+
+  const posts: Meta[] = [];
+
+  for (const file of filesArray) {
+    const post = await getPostByName(file);
+    if (post) {
+      const { meta } = post;
+      posts.push(meta);
+    }
+  }
+
+  return posts.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 }

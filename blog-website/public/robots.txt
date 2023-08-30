@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://rishabh-blogs.vercel.app/
+
+# Sitemaps
+Sitemap: https://rishabh-blogs.vercel.app/sitemap.xml
